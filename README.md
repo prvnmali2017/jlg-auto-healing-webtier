@@ -26,7 +26,7 @@ I work across both Azure and AWS, but chose Azure here:
 
 ## Architecture
 
-![Architecture diagram](diagram.png) · [Editable source (SVG)](docs/architecture.svg)
+Open [`docs/architecture.excalidraw`](docs/architecture.excalidraw) in [Excalidraw](https://excalidraw.com), edit if needed, then export as **`diagram.png`** in the repo root for the README preview.
 
 Internet traffic hits a public IP and Standard Load Balancer on port 80, then spreads across two VMSS instances in zones 1 and 2. Each VM bootstraps via cloud-init — installs Docker, pulls the image from GHCR, and starts NGINX.
 
@@ -155,8 +155,7 @@ Work was committed incrementally so the process is easy to follow on GitHub: pro
 ```
 ├── .github/workflows/terraform-ci.yml
 ├── Dockerfile
-├── diagram.png
-├── docs/architecture.svg
+├── docs/architecture.excalidraw
 └── terraform/
     ├── main.tf, variables.tf, outputs.tf, versions.tf
     ├── cloud-init.tpl
