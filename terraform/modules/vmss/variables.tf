@@ -49,6 +49,11 @@ variable "custom_data" {
   description = "Base64-encoded cloud-init configuration"
 }
 
+variable "zones" {
+  type        = list(string)
+  description = "Availability zones for VMSS instances"
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to VMSS resources"

@@ -46,7 +46,13 @@ variable "vmss_instance_count" {
 variable "vmss_sku" {
   type        = string
   description = "VMSS SKU"
-  default     = "Standard_B1ls"
+  default     = "Standard_B2ls_v2"
+}
+
+variable "vmss_zones" {
+  type        = list(string)
+  description = "Availability zones for VMSS — spread instances across zones for zone-level HA"
+  default     = ["1", "2"]
 }
 
 variable "container_image" {
