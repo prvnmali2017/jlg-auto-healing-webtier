@@ -27,6 +27,9 @@ jlg-auto-healing-webtier/
 ├── README.md
 ├── question.md
 └── terraform/
+    ├── main.tf
+    ├── outputs.tf
+    ├── cloud-init.tpl
     ├── versions.tf
     ├── variables.tf
     ├── environments/
@@ -37,7 +40,35 @@ jlg-auto-healing-webtier/
         └── vmss/
 ```
 
-Further runbook, architecture diagram, and cost details will be added as the solution is built out phase by phase.
+## Terraform
+
+Authenticate to Azure (`az login`), then:
+
+```bash
+cd terraform
+terraform init
+terraform validate
+terraform plan -var-file=environments/dev.tfvars -out=tfplan
+terraform apply tfplan   # optional — reviewers evaluate plan output only
+```
+
+Run `terraform plan` a second time after apply — expect **0 to add, 0 to change, 0 to destroy** (idempotent).
+
+### Outputs (after apply)
+
+| Output | Description |
+|--------|-------------|
+| `load_balancer_public_ip` | Public IP to curl the web tier |
+| `load_balancer_fqdn` | DNS name for the load balancer |
+| `vmss_id` | VM scale set resource ID |
+| `resource_group_name` | Azure resource group name |
+| `web_url` | `http://<public-ip>` shortcut |
+
+```bash
+terraform output
+```
+
+Use `environments/dev.tfvars` for environment-specific values (region, image, naming prefix).
 
 ## Container image 
 
@@ -63,14 +94,3 @@ docker run --rm -p 8080:80 ghcr.io/prvnmali2017/jlg-webtier:latest
 # open http://localhost:8080
 ```
 
-## Terraform (Phase 2)
-
-Foundation config is in `terraform/`. Validate before adding modules:
-
-```bash
-cd terraform
-terraform init
-terraform validate
-```
-
-Use `environments/dev.tfvars` for environment-specific values (region, image, naming prefix).
