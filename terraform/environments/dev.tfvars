@@ -25,6 +25,7 @@ vmss_zones = ["1", "2"]
 
 container_image = "ghcr.io/prvnmali2017/jlg-webtier:latest"
 
-# Public IP + Standard LB (~AUD 25–30/mo combined — main cost driver). 
+# Standard SKU required — Basic Load Balancer was retired 2025-09-30; new deployments cannot use it.
+# Public IP + Standard LB (~AUD 25–30/mo combined — main cost driver).
 # Refer: https://azure.microsoft.com/en-au/pricing/details/load-balancer/
 domain_name_label = "jlg-webtier-dev"
