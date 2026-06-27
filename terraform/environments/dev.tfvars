@@ -20,5 +20,8 @@ vmss_instance_count = 2
 # Refer: https://azure.microsoft.com/en-au/pricing/details/virtual-machines/linux/
 vmss_sku = "Standard_B1ls_v2"
 
-container_image   = "ghcr.io/prvnmali2017/jlg-webtier:latest"
+container_image = "ghcr.io/prvnmali2017/jlg-webtier:latest"
+
+# Public IP + Standard LB (~AUD 25–30/mo combined — main cost driver). 
+# Refer: https://azure.microsoft.com/en-au/pricing/details/load-balancer/
 domain_name_label = "jlg-webtier-dev"
