@@ -7,7 +7,7 @@ variable "location" {
 variable "prefix" {
   type        = string
   description = "Prefix used for resource naming (pattern: {type}-{prefix})"
-  default     = "jlg-webtier"
+  default     = "global360-webtier"
 }
 
 variable "tags" {
@@ -15,7 +15,7 @@ variable "tags" {
   description = "Tags applied to all resources"
   default = {
     environment = "dev"
-    project     = "jlg-webtier"
+    project     = "global360-webtier"
     managed_by  = "terraform"
   }
 }
@@ -58,11 +58,11 @@ variable "vmss_zones" {
 variable "container_image" {
   type        = string
   description = "Container image pulled by cloud-init on each VMSS instance"
-  default     = "ghcr.io/prvnmali2017/jlg-webtier:latest"
+  default     = "ghcr.io/prvnmali2017/global360-webtier:latest"
 }
 
 variable "domain_name_label" {
   type        = string
   description = "Globally unique DNS label for the load balancer public IP"
-  default     = "jlg-webtier-dev"
+  default     = "global360-webtier-dev"
 }

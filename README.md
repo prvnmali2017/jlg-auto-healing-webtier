@@ -1,201 +1,165 @@
-# jlg-auto-healing-webtier
+# global360-auto-healing-webtier
 
-Auto-healing web tier on **Azure** using Terraform and Docker. Two VMSS instances sit behind a Standard Load Balancer with N+1 capacity and automatic instance replacement.
+Auto-healing web tier on Azure — two VM Scale Set instances(VMSS) behind a load balancer, serving a containerised NGINX page. The goal is to lose any single VM without downtime: delete one instance and VMSS replaces it while the other keeps serving traffic.
 
-**Repository:** https://github.com/prvnmali2017/jlg-auto-healing-webtier
+**Repository:** [https://github.com/prvnmali2017/jlg-auto-healing-webtier](https://github.com/prvnmali2017/jlg-auto-healing-webtier)
 
-## Azure
+## Solution overview
 
-This solution uses Azure because Linux VM Scale Sets (VMSS) with a Standard Load Balancer provide native self-healing and N+1 capacity behind one public entry point. VMSS replaces terminated instances automatically, and cloud-init pulls a containerised NGINX page from GitHub Container Registry on each new VM. The stack is deployed in `australiaeast`.
+This meets the core requirements from the brief:
+
+- **Self-healing** — terminating a VMSS instance triggers Azure to replace it automatically. Capacity is held at two via VMSS desired count and a fixed autoscale profile.
+- **Self-provisioning (IaC only)** — the full stack is defined in Terraform under `terraform/`. One `terraform apply` stands everything up.
+- **Idempotent second run** — running `terraform plan` again after a successful apply should report no changes.
+- **N + 1 capacity** — two instances sit behind a Standard Load Balancer with traffic spread across availability zones 1 and 2.
+- **Static web page** — a simple NGINX welcome page runs in Docker on each VM (see [Container image](#container-image) below).
+
+Built with **Terraform** (≥ 1.5). Provisioning is optional for review — `terraform plan` output is sufficient.
+
+## Why Azure?
+
+I work across both Azure and AWS, but chose Azure here:
+
+- **Organisational fit** — JLG runs on Microsoft App Stack which I reviewed from Job requirements (.NET, Windows Server, AD, M365). Azure fits that stack closely with Microsoft Ecosystem. 
+- **Technical fit** — VM Scale Sets and a Standard Load Balancer deliver self-healing and N+1. Terraform provisions everything; cloud-init pulls a Docker image on first boot.
+- **Operational fit** — Deployed to `australiaeast`. VMs have no public IPs — all inbound traffic goes through the load balancer.
 
 ## Architecture
 
-![Architecture diagram](diagram.png)
+Architecture diagram
 
-Source: [docs/architecture.svg](docs/architecture.svg)
+Internet traffic hits a public IP and Standard Load Balancer on port 80, then spreads across two VMSS instances in zones 1 and 2. Each VM bootstraps via cloud-init — installs Docker, pulls the image from GHCR, and starts NGINX.
 
+## Infrastructure as Code
+
+Terraform code lives in `terraform/` with three modules:
+
+
+| Module          | Purpose                                                |
+| --------------- | ------------------------------------------------------ |
+| `network`       | Resource group, VNet, subnet, NSG                      |
+| `load_balancer` | Standard LB, public IP, HTTP health probe on port 80   |
+| `vmss`          | Linux VM Scale Set (2 instances), cloud-init bootstrap |
+
+
+**Naming** Conventions — resources follow `{type}-global360-webtier` (e.g. `rg-global360-webtier`, `vmss-global360-webtier`, `pip-global360-webtier`).
+
+**Variables** — configurable via `variables.tf` with environment values in `environments/dev.tfvars`.
+
+**Tags** — applied consistently across resources:
+
+```hcl
+environment = "dev"
+project     = "global360-webtier"
+managed_by  = "terraform"
+region      = "australiaeast"
 ```
-Internet → Public IP → Standard LB (HTTP :80)
-                              ↓
-                    VMSS (2 instances, zones 1 & 2)
-                    cloud-init → docker pull → NGINX :80
-                              ↑
-                           GHCR (public image)
-```
 
-## Prerequisites
+## Container image
 
-- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
-- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.5
-- [Docker](https://docs.docker.com/get-docker/) with buildx (for multi-platform builds)
+Optional bonus from the brief — the page is containerised:
 
-## Authenticate Terraform to Azure
+
+| Item                  | Location                                                                                     |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| Dockerfile            | `[Dockerfile](Dockerfile)`                                                                   |
+| Public registry image | `ghcr.io/prvnmali2017/global360-webtier:latest` (linux/amd64) on GHCR                        |
+| cloud-init bootstrap  | `[terraform/cloud-init.tpl](terraform/cloud-init.tpl)` — pulls and runs the image on each VM |
+
+
+The image is already built and published. and no need to build locally again.
+
+## How to run
+
+**Prerequisites:** [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli), [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.5
 
 ```bash
 az login
 az account set --subscription "<subscription_id_or_name>"
 ```
 
-Optional service principal:
-
-```bash
-az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/<SUBSCRIPTION_ID>"
-export ARM_CLIENT_ID="<APPID>"
-export ARM_CLIENT_SECRET="<PASSWORD>"
-export ARM_SUBSCRIPTION_ID="<SUBSCRIPTION_ID>"
-export ARM_TENANT_ID="<TENANT>"
-```
-
-## Container image
-
-Build for **linux/amd64** (required — Azure VMs are amd64; Mac builds are arm64 by default):
-
-```bash
-docker buildx build \
-  --platform linux/amd64 \
-  -t ghcr.io/prvnmali2017/jlg-webtier:latest \
-  --push \
-  .
-```
-
-Login and push (if not using `--push` above):
-
-```bash
-echo $GHCR_TOKEN | docker login ghcr.io -u prvnmali2017 --password-stdin
-docker push ghcr.io/prvnmali2017/jlg-webtier:latest
-```
-
-**Important:**
-- Set the GHCR package visibility to **Public** (Packages → `jlg-webtier` → Package settings)
-- Verify: `docker buildx imagetools inspect ghcr.io/prvnmali2017/jlg-webtier:latest` shows `linux/amd64`
-
-Test locally:
-
-```bash
-docker run --rm -p 8080:80 ghcr.io/prvnmali2017/jlg-webtier:latest
-```
-
-## Terraform
+**Plan** (required for review):
 
 ```bash
 cd terraform
 terraform init
 terraform validate
+terraform plan -var-file=environments/dev.tfvars
+```
+
+**Apply** (optional):
+
+```bash
 terraform plan -var-file=environments/dev.tfvars -out=tfplan
-terraform apply tfplan   # optional — reviewers evaluate plan output only
+terraform apply tfplan
 ```
 
 Run `terraform plan` again after apply — expect **0 to add, 0 to change, 0 to destroy**.
 
-### Outputs
+**Outputs:** `load_balancer_public_ip`, `web_url`, `load_balancer_fqdn`, `vmss_id`, `resource_group_name`
+
+**Tear down** (when finished):
 
 ```bash
-terraform output
+terraform destroy -var-file=environments/dev.tfvars
 ```
 
-| Output | Description |
-|--------|-------------|
-| `load_balancer_public_ip` | Public IP to reach the web tier |
-| `load_balancer_fqdn` | DNS name (`*.cloudapp.azure.com`) |
-| `vmss_id` | VM scale set resource ID |
-| `resource_group_name` | Azure resource group |
-| `web_url` | `http://<public-ip>` |
+## Assumptions
 
-## Testing
+- Region: `australiaeast`
+- Two `Standard_B2ls_v2` VMSS instances across availability zones 1 and 2
+- Standard Load Balancer with HTTP health probe on port 80
+- Public GHCR image 
+- VMs have no public IP; inbound traffic enters only via the load balancer
+- SSH key generated by Terraform (`tls_private_key`) for VMSS admin access
 
-### Web tier
+## Estimated monthly cost
 
-```bash
-curl -I http://$(terraform output -raw load_balancer_public_ip)
-```
 
-Expect **HTTP 200** and the Johns Lyng Group welcome page.
+| Resource                | ~AUD/month |
+| ----------------------- | ---------- |
+| 2× Standard_B2ls_v2 VMs | 12–16      |
+| Standard Public IP      | 5          |
+| Standard Load Balancer  | 25–30      |
+| **Total (24/7)**        | **42–51**  |
 
-### Auto-healing
 
-1. Confirm the site is up (`curl` above)
-2. Azure Portal → `vmss-jlg-webtier` → **Instances** → delete one instance
-3. Wait 2–5 minutes for VMSS to replace it and cloud-init to start Docker
-4. `curl` again — site should still respond
-
-### Debug on a VM
-
-```bash
-az vmss run-command invoke \
-  -g rg-jlg-webtier -n vmss-jlg-webtier --instance-id 0 \
-  --command-id RunShellScript \
-  --scripts "cloud-init status; docker ps; curl -I http://localhost:80"
-```
+The brief targets ≤ AUD 20/month if fully deployed. That isn't achievable with this architecture — the Standard Load Balancer alone exceeds the budget. Azure retired Basic Load Balancer in September 2025, so Standard is the only viable SKU for a new deployment. Destroy the stack after any demo to avoid ongoing charges.
 
 ## CI pipeline
 
 GitHub Actions runs on push/PR to `terraform/`:
 
 - `terraform fmt -check`
-- `terraform init -backend=false`
 - `terraform validate`
-- `terraform plan` (requires Azure secrets in the repository)
+- `terraform plan` (requires `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_SUBSCRIPTION_ID`, `ARM_TENANT_ID` repository secrets)
 
-Add these **repository secrets** to enable plan in CI:
+Workflow: `[.github/workflows/terraform-ci.yml](.github/workflows/terraform-ci.yml)`
 
-| Secret | Description |
-|--------|-------------|
-| `ARM_CLIENT_ID` | Service principal app ID |
-| `ARM_CLIENT_SECRET` | Service principal secret |
-| `ARM_SUBSCRIPTION_ID` | Azure subscription ID |
-| `ARM_TENANT_ID` | Azure tenant ID |
+## Testing auto-healing
 
-Workflow: [.github/workflows/terraform-ci.yml](.github/workflows/terraform-ci.yml)
+Only relevant if we applied the stack.
 
-## Assumptions
+```bash
+curl -I http://$(terraform output -raw load_balancer_public_ip)
+```
 
-- Region: `australiaeast`
-- 2× `Standard_B2ls_v2` VMSS instances across availability zones 1 and 2
-- Standard Load Balancer with HTTP health probe on port 80
-- Public GHCR image (no Azure Container Registry)
-- VMSS instances have no public IP — inbound traffic via load balancer only
-- Infrastructure apply is optional for review; tear down after validation
+Delete one instance in the portal (`vmss-global360-webtier` → Instances), wait 2–5 minutes, then curl again — the site should still respond.
 
-## Estimated monthly cost
+## Commit history
 
-| Resource | Estimated cost (AUD/month) |
-|----------|----------------------------|
-| 2× Standard_B2ls_v2 VMs | ~AUD 12–16 |
-| Public IP (static, Standard) | ~AUD 5 |
-| Standard Load Balancer | ~AUD 25–30 |
-| **Total (24/7)** | **~AUD 42–51** |
+Work was committed incrementally so the process is easy to follow on GitHub: project scaffold → Dockerfile and GHCR image → Terraform modules (network, load balancer, VMSS) → CI workflow → documentation and diagram.
 
-The assignment target is ≤ AUD 20 if fully deployed. The Standard Load Balancer is the main cost driver. Reviewers evaluate `terraform plan` output; destroy resources after demo to avoid ongoing charges.
-
-References:
-- [Azure VM pricing](https://azure.microsoft.com/en-au/pricing/details/virtual-machines/linux/)
-- [Azure Load Balancer pricing](https://azure.microsoft.com/en-au/pricing/details/load-balancer/)
-
-## Project structure
+## Project layout
 
 ```
-jlg-auto-healing-webtier/
 ├── .github/workflows/terraform-ci.yml
 ├── Dockerfile
 ├── diagram.png
-├── docs/architecture.svg
-├── README.md
 └── terraform/
-    ├── main.tf
-    ├── outputs.tf
-    ├── variables.tf
-    ├── versions.tf
+    ├── main.tf, variables.tf, outputs.tf, versions.tf
     ├── cloud-init.tpl
     ├── environments/dev.tfvars
-    └── modules/
-        ├── network/
-        ├── load_balancer/
-        └── vmss/
+    └── modules/ (network, load_balancer, vmss)
 ```
 
-## Tear down
-
-```bash
-cd terraform
-terraform destroy -var-file=environments/dev.tfvars
-```
