@@ -6,6 +6,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "this" {
   instances           = var.instance_count
   admin_username      = var.admin_username
   upgrade_mode        = "Manual"
+  zones               = var.zones
 
   admin_ssh_key {
     username   = var.admin_username

@@ -57,5 +57,6 @@ module "vmss" {
   custom_data = base64encode(templatefile("${path.module}/cloud-init.tpl", {
     container_image = var.container_image
   }))
-  tags = var.tags
+  zones = var.vmss_zones
+  tags  = var.tags
 }

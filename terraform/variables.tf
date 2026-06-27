@@ -46,15 +46,23 @@ variable "vmss_instance_count" {
 variable "vmss_sku" {
   type        = string
   description = "VMSS SKU"
-  default     = "Standard_B1ls_v2"
+  default     = "Standard_B2ls_v2"
+}
+
+variable "vmss_zones" {
+  type        = list(string)
+  description = "Availability zones for VMSS — spread instances across zones for zone-level HA"
+  default     = ["1", "2"]
 }
 
 variable "container_image" {
   type        = string
   description = "Container image pulled by cloud-init on each VMSS instance"
+  default     = "ghcr.io/prvnmali2017/jlg-webtier:latest"
 }
 
 variable "domain_name_label" {
   type        = string
   description = "Globally unique DNS label for the load balancer public IP"
+  default     = "jlg-webtier-dev"
 }
