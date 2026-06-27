@@ -1,4 +1,4 @@
-# jlg-auto-healing-webtier
+# global360-auto-healing-webtier
 
 A small auto-healing web tier on Azure: two VM Scale Set instances behind a load balancer, serving a containerised NGINX page. If you delete a VM, the platform replaces it automatically — the site stays up.
 
@@ -7,6 +7,8 @@ A small auto-healing web tier on Azure: two VM Scale Set instances behind a load
 ## Why Azure?
 
 VM Scale Sets (VMSS) plus a Standard Load Balancer give you self-healing and N+1 capacity out of the box — one public entry point, traffic spread across two VMs. Each new instance runs cloud-init, pulls a Docker image from GitHub Container Registry (GHCR), and starts NGINX. Everything deploys to `australiaeast`.
+
+Resource names follow the `global360-webtier` convention (e.g. `rg-global360-webtier`, `vmss-global360-webtier`) to align with the reference task.
 
 ## Architecture
 
@@ -25,7 +27,8 @@ Internet → Public IP → Standard LB (:80)
 
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
 - [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.5
-- [Docker](https://docs.docker.com/get-docker/) with buildx
+
+No Docker required for review — the container image is already built and published.
 
 ### Log in to Azure
 
@@ -36,25 +39,13 @@ az account set --subscription "<subscription_id_or_name>"
 
 For CI or automation, use a service principal and export `ARM_CLIENT_ID`, `ARM_CLIENT_SECRET`, `ARM_SUBSCRIPTION_ID`, and `ARM_TENANT_ID`.
 
-## Build and push the container
+## Container image
 
-Azure VMs are **amd64**. If you're on a Mac, build for that platform explicitly:
+The web page is already packaged and available as a **public** image on GHCR — reviewers do not need to build or push anything:
 
-```bash
-docker buildx build \
-  --platform linux/amd64 \
-  -t ghcr.io/prvnmali2017/jlg-webtier:latest \
-  --push \
-  .
-```
+**`ghcr.io/prvnmali2017/global360-webtier:latest`** (`linux/amd64`)
 
-Before pushing, log in to GHCR and make the package **Public** (Packages → `jlg-webtier` → Package settings). Confirm the image: `docker buildx imagetools inspect ghcr.io/prvnmali2017/jlg-webtier:latest` should show `linux/amd64`.
-
-Quick local test:
-
-```bash
-docker run --rm -p 8080:80 ghcr.io/prvnmali2017/jlg-webtier:latest
-```
+cloud-init on each VMSS instance pulls this image automatically. The `Dockerfile` in the repo is for reference if you want to rebuild it later. If applying, ensure this tag exists on GHCR (retag and push from the previous `jlg-webtier` image if needed).
 
 ## Deploy with Terraform
 
@@ -78,12 +69,12 @@ Useful outputs: `load_balancer_public_ip`, `load_balancer_fqdn`, `web_url`, `vms
 curl -I http://$(terraform output -raw load_balancer_public_ip)
 ```
 
-You should get HTTP 200 and the Johns Lyng Group welcome page.
+You should get HTTP 200 and the Global360 welcome page.
 
 **Test auto-healing:**
 
 1. Confirm the site responds (`curl` above)
-2. Azure Portal → `vmss-jlg-webtier` → **Instances** → delete one VM
+2. Azure Portal → `vmss-global360-webtier` → **Instances** → delete one VM
 3. Wait 2–5 minutes for replacement and cloud-init
 4. `curl` again — the site should still be up
 
@@ -91,7 +82,7 @@ You should get HTTP 200 and the Johns Lyng Group welcome page.
 
 ```bash
 az vmss run-command invoke \
-  -g rg-jlg-webtier -n vmss-jlg-webtier --instance-id 0 \
+  -g rg-global360-webtier -n vmss-global360-webtier --instance-id 0 \
   --command-id RunShellScript \
   --scripts "cloud-init status; docker ps; curl -I http://localhost:80"
 ```
@@ -105,6 +96,7 @@ See [.github/workflows/terraform-ci.yml](.github/workflows/terraform-ci.yml).
 ## Assumptions
 
 - **Region:** `australiaeast`
+- **Naming:** `global360-webtier` prefix on all resources
 - **Capacity:** 2× `Standard_B2ls_v2` VMs across zones 1 and 2
 - **Load balancer:** Standard SKU with HTTP health probe on port 80
 - **Image:** public GHCR package (no Azure Container Registry)
@@ -135,7 +127,7 @@ Standard LB also supports health probes and zone-aware VMSS backends, which this
 ## Project layout
 
 ```
-jlg-auto-healing-webtier/
+global360-auto-healing-webtier/
 ├── .github/workflows/terraform-ci.yml
 ├── Dockerfile
 ├── diagram.png
