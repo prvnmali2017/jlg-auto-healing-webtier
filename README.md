@@ -24,3 +24,27 @@ jlg-auto-healing-webtier/
 ```
 
 Further runbook, architecture diagram, and cost details will be added as the solution is built out phase by phase.
+
+## Container image (Phase 1)
+
+The web tier runs as an NGINX container. Build and push to GitHub Container Registry (GHCR):
+
+```bash
+# Build
+docker build -t ghcr.io/prvnmali2017/jlg-webtier:latest .
+
+# Log in (create a PAT with write:packages at github.com/settings/tokens)
+echo $GHCR_TOKEN | docker login ghcr.io -u prvnmali2017 --password-stdin
+
+# Push
+docker push ghcr.io/prvnmali2017/jlg-webtier:latest
+```
+
+After pushing, set the package visibility to **Public** in GitHub (Packages → `jlg-webtier` → Package settings) so Azure VMs can pull without registry credentials.
+
+Test locally:
+
+```bash
+docker run --rm -p 8080:80 ghcr.io/prvnmali2017/jlg-webtier:latest
+# open http://localhost:8080
+```
