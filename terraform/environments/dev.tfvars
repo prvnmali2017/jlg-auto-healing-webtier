@@ -16,9 +16,9 @@ subnet_prefix = ["10.0.1.0/24"]
 
 vmss_instance_count = 2
 
-# Cheapest burstable SKU (~AUD 6–8/mo for 2 VMs, compute only). 
+# Cheapest burstable SKU in australiaeast (B1ls_v2 not available in this region).
 # Refer: https://azure.microsoft.com/en-au/pricing/details/virtual-machines/linux/
-vmss_sku = "Standard_B1ls_v2"
+vmss_sku = "Standard_B1ls"
 
 container_image = "ghcr.io/prvnmali2017/jlg-webtier:latest"
 
