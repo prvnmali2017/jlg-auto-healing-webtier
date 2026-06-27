@@ -28,7 +28,7 @@ variable "address_space" {
 
 variable "subnet_prefix" {
   type        = list(string)
-  description = "Address prefixes for the web tier subnet"
+  description = "Address prefixes for the web tier subnet (10.0.1.0/24 — VMSS subnet within the VNet)"
   default     = ["10.0.1.0/24"]
 }
 
