@@ -67,6 +67,8 @@ az account set --subscription "<subscription_id_or_name>"
 **Plan** (required for review):
 
 ```bash
+git clone https://github.com/prvnmali2017/jlg-auto-healing-webtier.git
+cd jlg-auto-healing-webtier
 cd terraform
 terraform init
 terraform validate
