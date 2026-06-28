@@ -4,21 +4,9 @@ Auto-healing web tier on Azure — two VM Scale Set instances(VMSS) behind a loa
 
 **Repository:** [https://github.com/prvnmali2017/jlg-auto-healing-webtier](https://github.com/prvnmali2017/jlg-auto-healing-webtier)
 
-## Solution overview
-
-This meets the core requirements from the brief:
-
-- **Self-healing** — terminating a VMSS instance triggers Azure to replace it automatically. Capacity is held at two via VMSS desired count and a fixed autoscale profile.
-- **Self-provisioning (IaC only)** — the full stack is defined in Terraform under `terraform/`. One `terraform apply` stands everything up.
-- **Idempotent second run** — running `terraform plan` again after a successful apply should report no changes.
-- **N + 1 capacity** — two instances sit behind a Standard Load Balancer with traffic spread across availability zones 1 and 2.
-- **Static web page** — a simple NGINX welcome page runs in Docker on each VM (see [Container image](#container-image) below).
-
-Built with **Terraform** (≥ 1.5). Provisioning is optional for review — `terraform plan` output is sufficient.
-
 ## Why Azure?
 
-I work across both Azure and AWS, but chose Azure here:
+I work extensively across both Azure and AWS as a senior engineer in my previous roles, but chose Azure here because of:
 
 - **Organisational fit** — JLG runs on Microsoft App Stack which I reviewed from Job requirements (.NET, Windows Server, AD, M365). Azure fits that stack closely with Microsoft Ecosystem. 
 - **Technical fit** — VM Scale Sets and a Standard Load Balancer deliver self-healing and N+1. Terraform provisions everything; cloud-init pulls a Docker image on first boot.
@@ -26,11 +14,9 @@ I work across both Azure and AWS, but chose Azure here:
 
 ## Architecture
 
-![Architecture diagram](diagram.png)
+![Global360 Auto-Healing Web Tier architecture](docs/architecture.png)
 
 Internet traffic hits a public IP and Standard Load Balancer on port 80, then spreads across two VMSS instances in zones 1 and 2. Each VM bootstraps via cloud-init — installs Docker, pulls the image from GHCR, and starts NGINX.
-
-
 
 ## Infrastructure as Code
 
@@ -59,8 +45,6 @@ region      = "australiaeast"
 
 ## Container image
 
-Optional bonus from the brief — the page is containerised:
-
 
 | Item                  | Location                                                                                     |
 | --------------------- | -------------------------------------------------------------------------------------------- |
@@ -69,7 +53,7 @@ Optional bonus from the brief — the page is containerised:
 | cloud-init bootstrap  | `[terraform/cloud-init.tpl](terraform/cloud-init.tpl)` — pulls and runs the image on each VM |
 
 
-The image is already built and published. and no need to build locally again.
+The image is already built and published. and we no need to build locally again.
 
 ## How to run
 
@@ -126,7 +110,7 @@ terraform destroy -var-file=environments/dev.tfvars
 | **Total (24/7)**        | **42–51**  |
 
 
-The brief targets ≤ AUD 20/month if fully deployed. That isn't achievable with this architecture — the Standard Load Balancer alone exceeds the budget. Azure retired Basic Load Balancer in September 2025, so Standard is the only viable SKU for a new deployment. Destroy the stack after any demo to avoid ongoing charges.
+The question was to to use targets ≤ AUD 20/month if fully deployed. That isn't achievable with this architecture — the Standard Load Balancer alone exceeds the budget.Unfortunately Azure retired Basic Load Balancer in September 2025, so Standard is the only viable option for a new deployment. 
 
 ## CI pipeline
 
@@ -157,7 +141,7 @@ Work was committed incrementally so the process is easy to follow on GitHub: pro
 ```
 ├── .github/workflows/terraform-ci.yml
 ├── Dockerfile
-├── diagram.png
+├── docs/architecture.png
 └── terraform/
     ├── main.tf, variables.tf, outputs.tf, versions.tf
     ├── cloud-init.tpl
