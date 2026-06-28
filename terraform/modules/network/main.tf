@@ -11,20 +11,8 @@ resource "azurerm_network_security_group" "this" {
   tags                = var.tags
 
   security_rule {
-    name                       = "allow-http-inbound"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "Internet"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
     name                       = "allow-azure-lb-inbound"
-    priority                   = 110
+    priority                   = 100
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "*"
