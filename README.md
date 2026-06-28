@@ -4,6 +4,43 @@ Auto-healing web tier on Azure — two VM Scale Set instances(VMSS) behind a loa
 
 **Repository:** [https://github.com/prvnmali2017/jlg-auto-healing-webtier](https://github.com/prvnmali2017/jlg-auto-healing-webtier)
 
+## How to run
+
+**Prerequisites:** [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli), [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.5
+
+```bash
+az login
+az account set --subscription "<subscription_id_or_name>"
+```
+
+**Plan** (required for review):
+
+```bash
+git clone https://github.com/prvnmali2017/jlg-auto-healing-webtier.git
+cd jlg-auto-healing-webtier
+cd terraform
+terraform init
+terraform validate
+terraform plan -var-file=environments/dev.tfvars
+```
+
+**Apply** (optional):
+
+```bash
+terraform plan -var-file=environments/dev.tfvars -out=tfplan
+terraform apply tfplan
+```
+
+Run `terraform plan` again after apply — expect **0 to add, 0 to change, 0 to destroy**.
+
+**Outputs:** `load_balancer_public_ip`, `web_url`, `load_balancer_fqdn`, `vmss_id`, `resource_group_name`
+
+**Tear down** (when finished):
+
+```bash
+terraform destroy -var-file=environments/dev.tfvars
+```
+
 ## Why Azure?
 
 I work extensively across both Azure and AWS as a senior engineer in my previous roles, but chose Azure here because of:
@@ -55,42 +92,7 @@ region      = "australiaeast"
 
 The image is already built and published. and we no need to build locally again.
 
-## How to run
 
-**Prerequisites:** [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli), [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.5
-
-```bash
-az login
-az account set --subscription "<subscription_id_or_name>"
-```
-
-**Plan** (required for review):
-
-```bash
-git clone https://github.com/prvnmali2017/jlg-auto-healing-webtier.git
-cd jlg-auto-healing-webtier
-cd terraform
-terraform init
-terraform validate
-terraform plan -var-file=environments/dev.tfvars
-```
-
-**Apply** (optional):
-
-```bash
-terraform plan -var-file=environments/dev.tfvars -out=tfplan
-terraform apply tfplan
-```
-
-Run `terraform plan` again after apply — expect **0 to add, 0 to change, 0 to destroy**.
-
-**Outputs:** `load_balancer_public_ip`, `web_url`, `load_balancer_fqdn`, `vmss_id`, `resource_group_name`
-
-**Tear down** (when finished):
-
-```bash
-terraform destroy -var-file=environments/dev.tfvars
-```
 
 ## Assumptions
 
