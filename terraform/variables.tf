@@ -17,6 +17,7 @@ variable "tags" {
     environment = "dev"
     project     = "global360-webtier"
     managed_by  = "terraform"
+    region      = "australiaeast"
   }
 }
 
